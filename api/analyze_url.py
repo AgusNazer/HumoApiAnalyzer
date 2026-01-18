@@ -9,6 +9,52 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from utils.rules import analyze_text
 from utils.fetcher import fetch_text_from_url
 
+#API 
+def analyze_url_api(url: str) -> dict:
+    """Analiza una URL y devuelve los resultados en formato dict para la API"""
+    try:
+        text = fetch_text_from_url(url)
+        result = analyze_text(text)
+        
+        # Convertir SignalType a dict simple con sus meanings
+        signals_detail = {}
+        total_score = 0
+        
+        for signal, count in result.items():
+            signal_name = signal.value
+            meanings = SIGNAL_MEANINGS.get(signal_name, {})
+            meaning = meanings.get(count, f"⚠️ {count} detecciones")
+            
+            signals_detail[signal_name] = {
+                "count": count,
+                "meaning": meaning
+            }
+            total_score += count
+
+        # Categoría final
+        if total_score <= 2:
+            risk_level = "BAJO_RIESGO"
+            category = "🟢 Curso RAZONABLE / Transparente"
+        elif total_score <= 5:
+            risk_level = "MEDIO_RIESGO"
+            category = "🟡 Promesas POCO REALISTAS - Revisar con cuidado"
+        else:
+            risk_level = "ALTO_RIESGO"
+            category = "🔴 ALTO RIESGO de marketing engañoso"
+        
+        return {
+            "url": url,
+            "score": total_score,
+            "signals": signals_detail,
+            "risk_level": risk_level,
+            "category": category
+        }
+            
+    except Exception as e:
+        raise Exception(f"Error al procesar la URL: {str(e)}")
+    
+    
+# para ver por consola, no para la API 
 # Mapeo de interpretaciones por señal y cantidad
 SIGNAL_MEANINGS = {
     "promesa_empleo": {
@@ -81,3 +127,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     analyze_url(args.url)
+

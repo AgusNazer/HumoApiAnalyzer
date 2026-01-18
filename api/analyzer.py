@@ -1,51 +1,75 @@
 from datetime import datetime
-from .schemas import AnalyzeResponse, AnalysisSignals
+from .schemas import AnalyzeResponse, AnalysisSignals, SignalDetail
 from .signal_types import SignalType
 from .weights import SIGNAL_WEIGHTS
+import sys
+import os
 
+# Agrega utils al path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 
+from utils.rules import analyze_text
+from utils.fetcher import fetch_text_from_url
+
+# Mapeo de interpretaciones
+SIGNAL_MEANINGS = {
+    "promesa_empleo": {0: "✅ No promete empleo", 1: "🟡 Promete 1 empleo", 2: "🔴 Promete 2+ empleos"},
+    "promesa_sueldo": {0: "✅ Sin promesas salariales falsas", 1: "🟡 Promesa salarial sospechosa", 2: "🔴 Múltiples promesas salariales"},
+    "tiempo_irreal": {0: "✅ Tiempos realistas", 1: "🟡 Tiempos algo irreales", 2: "🔴 Tiempos muy irreales"},
+    "seniority_falso": {0: "✅ Requiere experiencia apropiada", 1: "🟡 Contradicción de experiencia", 2: "🔴 Múltiples contradicciones"},
+    "exageracion": {0: "✅ Lenguaje normal", 1: "🟡 Algo exagerado", 2: "🔴 Muy exagerado"},
+}
 
 def analyze_url(url: str) -> AnalyzeResponse:
-    # Log inicial
-    print("URL analizada:", url)
+    try:
+        # Obtener contenido
+        text = fetch_text_from_url(url)
+        
+        # Analizar texto
+        result = analyze_text(text)
+        
+        # Convertir a SignalDetail y calcular score
+        signals_detail = {}
+        total_score = 0
+        
+        for signal, count in result.items():
+            signal_name = signal.value
+            meanings = SIGNAL_MEANINGS.get(signal_name, {})
+            meaning = meanings.get(count, f"⚠️ {count} detecciones")
+            
+            signals_detail[signal_name] = SignalDetail(
+                count=count,
+                meaning=meaning
+            )
+            total_score += count
 
-    # Señales (hardcodeadas por ahora)
-    signals = AnalysisSignals(
-        promesas_laborales=2,
-        lenguaje_exagerado=3,
-        falta_transparencia=1,
-        autoridad_dudosa=2,
-    )
-
-    # Score total
-    score = (
-        signals.promesas_laborales
-        + signals.lenguaje_exagerado
-        + signals.falta_transparencia
-        + signals.autoridad_dudosa
-    )
-
-    # Categoría segn score
-    def calculate_category(score: int) -> str:
-        if score <= 6:
-            return "🟢 Curso razonable / transparente"
-        elif score <= 13:
-            return "🟡 Promesas poco realistas"
+        # Determinar categoría
+        if total_score <= 2:
+            category = "🟢 Curso RAZONABLE / Transparente"
+        elif total_score <= 5:
+            category = "🟡 Promesas POCO REALISTAS"
         else:
-            return "🔴 Alto riesgo de marketing engañoso"
+            category = "🔴 ALTO RIESGO de marketing engañoso"
+        
+        # Crear objeto AnalysisSignals con todos los campos
+        signals = AnalysisSignals(
+            promesa_empleo=signals_detail.get("promesa_empleo", SignalDetail(count=0, meaning="✅ No promete empleo")),
+            promesa_sueldo=signals_detail.get("promesa_sueldo", SignalDetail(count=0, meaning="✅ Sin promesas salariales falsas")),
+            tiempo_irreal=signals_detail.get("tiempo_irreal", SignalDetail(count=0, meaning="✅ Tiempos realistas")),
+            seniority_falso=signals_detail.get("seniority_falso", SignalDetail(count=0, meaning="✅ Requiere experiencia apropiada")),
+            exageracion=signals_detail.get("exageracion", SignalDetail(count=0, meaning="✅ Lenguaje normal"))
+        )
 
-    category = calculate_category(score)
-
-    # Logs finales
-    print("Señales:", signals)
-    print("Score total:", score)
-    print("Categoría:", category)
-
-    # Respuesta
-    return AnalyzeResponse(
-        category=category,
-        score=score,
-        signals=signals,
-        explanation="El contenido presenta indicadores claros de marketing exagerado.",
-        created_at=datetime.utcnow(),
-    )
+        return AnalyzeResponse(
+            category=category,
+            score=total_score,
+            signals=signals,
+            explanation=f"Análisis completado. Score: {total_score}. " + 
+                       ("Curso confiable." if total_score <= 2 else 
+                        "Revisar promesas ofrecidas." if total_score <= 5 else
+                        "Advertencia: Alto riesgo detectado."),
+            created_at=datetime.utcnow()
+        )
+            
+    except Exception as e:
+        raise Exception(f"Error al procesar la URL: {str(e)}")
