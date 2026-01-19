@@ -92,7 +92,7 @@ Analiza una URL y retorna un reporte detallado de señales detectadas.
 | **seniority_falso** | Contradicciones en nivel de experiencia requerida | ✅ (0) - 🟡 (1) - 🔴 (2+) |
 | **exageracion** | Lenguaje excesivamente exagerado | ✅ (0) - 🟡 (1) - 🔴 (2+) |
 
-## Categorías de Riesgo
+## Categorías de Riesgo!
 
 - **🟢 Curso RAZONABLE / Transparente** (Score: 0-2)
   - Pocas o ninguna señal de alarma
