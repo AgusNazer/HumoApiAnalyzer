@@ -1,13 +1,14 @@
 from datetime import datetime
-from .schemas import AnalyzeResponse, AnalysisSignals, SignalDetail
-from .signal_types import SignalType
-from .weights import SIGNAL_WEIGHTS
 import sys
 import os
 
-# Agrega utils al path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
+# Add parent directory to path for module imports
+sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from schemas import AnalyzeResponse, AnalysisSignals, SignalDetail
+from signal_types import SignalType
+from weights import SIGNAL_WEIGHTS
 from utils.rules import analyze_text
 from utils.fetcher import fetch_text_from_url
 

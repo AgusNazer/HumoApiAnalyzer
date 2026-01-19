@@ -1,4 +1,4 @@
-from .signal_types import SignalType
+from signal_types import SignalType
 
 SIGNAL_WEIGHTS = {
     SignalType.PROMESA_EMPLEO: 4,
